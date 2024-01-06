@@ -14,6 +14,7 @@ load_dotenv()
 
 PROPERTIES_WORKBOOK_FILE = "./properties.xlsx"
 SENTENCES_TEXT_FILE = "./sentences.txt"
+GENERATED_PROPERTY_VALUES_FILE = "./generated_property_values.xlsx"
 
 GPT_MODEL = "gpt-3.5-turbo"
 GPT_TEMPERATURE = 0.8
@@ -265,7 +266,7 @@ while True:
         break
 
 if generated_property_values:
-    writer = pd.ExcelWriter("generated_property_values.xlsx")
+    writer = pd.ExcelWriter(GENERATED_PROPERTY_VALUES_FILE)
 
     for col, values in generated_property_values.items():
         df = pd.DataFrame({col: values})
