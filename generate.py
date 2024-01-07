@@ -1,23 +1,33 @@
 import os
 import sys
+import time
 import random
-import openpyxl
 import traceback
-import pandas as pd
 
 from constants import *
 from openai import OpenAI
 from dotenv import load_dotenv
 from openlimit import ChatRateLimiter
-from helpers import strip_whitespaces, compress_newlines
+from helpers import (
+    GroupHashAlreadyUsedException,
+    strip_whitespaces,
+    compress_newlines,
+    read_properties_workbook,
+    read_generated_property_values_workbook,
+    read_used_group_hashes,
+    read_used_properties,
+    save_sentences_to_textfile,
+    save_generated_property_values_to_workbook,
+    save_used_group_hashes_to_file,
+    save_used_properties_to_file,
+)
 from generate_value import random_value
 
-load_dotenv()
-
 MAX_NUMBER_OF_GENERATIONS = 5
+MAX_NUMBER_OF_FAILURES = 200
 
 PROMPT_SYSTEM_MESSAGE = """
-你将被提供一组属性信息，你的任务是尽你的最大可能以各种不同的形式把这组属性组装成 3 句句式多样并尽可能连贯的话。在你的回答中除了生成的句子外请不要包含任何其他的内容。
+你将被提供一组属性信息，你的任务是尽你的最大可能以各种不同的形式把这组属性组装成 3 句句式多样并尽可能连贯的话。在你的回答中除了生成的句子外请不要包含任何其他的内容，并且请尽可能避免修改属性值在句子中的表现方式。如果你不能生成句子，请回答 "未知"。
 """
 PROMPT_EXAMPLE_USER_MESSAGE = """
 姓名: 张三, 年龄: 20, 生日: 1990-05-04
@@ -31,81 +41,9 @@ PROMPT_EXAMPLE_ASSISTANT_MESSAGE = """
 PROPERTY_GROUP_LENGTH_LOWER_BOUND = 5
 PROPERTY_GROUP_LENGTH_UPPER_BOUND = 10
 
+load_dotenv()
 rate_limiter = ChatRateLimiter(request_limit=GPT_RPM, token_limit=GPT_TPM)
 openai_client = OpenAI()
-
-# I/O --------------------------------------------
-
-
-def read_properties_workbook():
-    worksheet = {}
-
-    if not os.path.isfile(PROPERTIES_WORKBOOK_FILE):
-        return worksheet
-
-    wb = openpyxl.load_workbook(PROPERTIES_WORKBOOK_FILE)
-    ws = wb.active
-
-    for row in ws.rows:
-        if row[0].value is None:
-            continue
-        worksheet[row[0].value] = row[1].value
-
-    return worksheet
-
-
-def read_generated_property_values_workbook():
-    property_values = {}
-
-    if not os.path.isfile(GENERATED_PROPERTY_VALUES_FILE):
-        return property_values
-
-    wb = openpyxl.load_workbook(GENERATED_PROPERTY_VALUES_FILE)
-
-    for sheet in wb.sheetnames:
-        property_values[sheet] = [cell.value for cell in wb[sheet]["A"][1:]]
-
-    print("Previously generated property values: ", property_values)
-
-    return property_values
-
-
-def read_used_group_hashes():
-    used_group_hashes = []
-
-    if not os.path.isfile(USED_GROUP_HASHES_FILE):
-        return used_group_hashes
-
-    with open(USED_GROUP_HASHES_FILE, "r") as f:
-        used_group_hashes = [int(line.strip()) for line in f.readlines()]
-
-    print("Previously used group hashes: ", used_group_hashes)
-
-    return used_group_hashes
-
-
-def save_sentences_to_textfile(sentences):
-    with open(SENTENCES_TEXT_FILE, "a") as f:
-        for sentence in sentences:
-            f.write(sentence + "\n")
-
-
-def save_generated_property_values_to_workbook(property_values):
-    print("Saving generated property values to file...")
-    writer = pd.ExcelWriter(GENERATED_PROPERTY_VALUES_FILE)
-
-    for col, values in property_values.items():
-        df = pd.DataFrame({col: values})
-        df.to_excel(writer, sheet_name=col, index=False)
-
-    writer._save()
-
-
-def save_used_group_hashes_to_file(used_group_hashes):
-    print("Saving used group hashes to file...")
-    with open(USED_GROUP_HASHES_FILE, "w") as f:
-        for group_hash in used_group_hashes:
-            f.write(str(group_hash) + "\n")
 
 
 # Data --------------------------------------------
@@ -113,21 +51,23 @@ def save_used_group_hashes_to_file(used_group_hashes):
 worksheet = read_properties_workbook()
 used_group_hashes = read_used_group_hashes()
 generated_property_values = read_generated_property_values_workbook()
+used_properties = read_used_properties()
 
 # Logic --------------------------------------------
 
 
 def generate_random_property_group(worksheet, properties):
+    group_size_lower_bound = min(PROPERTY_GROUP_LENGTH_LOWER_BOUND, len(properties))
+    group_size_upper_bound = min(PROPERTY_GROUP_LENGTH_UPPER_BOUND, len(properties))
+
     group = random.sample(
         properties,
-        random.randint(
-            PROPERTY_GROUP_LENGTH_LOWER_BOUND, PROPERTY_GROUP_LENGTH_UPPER_BOUND
-        ),
+        random.randint(group_size_lower_bound, group_size_upper_bound),
     )
     group_hash = hash(tuple(sorted(group)))
 
     if group_hash in used_group_hashes:
-        return generate_random_property_group(worksheet, properties)
+        raise GroupHashAlreadyUsedException
 
     used_group_hashes.append(group_hash)
 
@@ -136,21 +76,25 @@ def generate_random_property_group(worksheet, properties):
 
 def generate_property_group_prompt(property_group):
     global generated_property_values
+
+    new_property_group = property_group
     prompt = ""
 
-    for prop in property_group.items():
-        if prop[1] is not None:
-            val = prop[1]
-        else:
-            val, generated_property_values = random_value(
-                prop[0], generated_property_values
+    for prop, val in property_group.items():
+        final_val = val
+
+        if final_val is None:
+            final_val, generated_property_values = random_value(
+                prop, generated_property_values
             )
 
-        prompt += f"{prop[0]}: {str(val).strip()}, "
+        final_val = str(final_val).strip()
+        new_property_group[prop] = final_val
+        prompt += f"{prop}: {final_val}, "
 
     prompt = prompt[:-2]
 
-    return prompt
+    return prompt, new_property_group
 
 
 def get_openai_response(prompt):
@@ -173,9 +117,10 @@ def get_openai_response(prompt):
         response = openai_client.chat.completions.create(**openai_params)
 
     response_message = response.choices[0]
+    response_message_content = response_message.message.content.strip()
 
-    if response_message.finish_reason == "stop":
-        return response_message.message.content
+    if response_message.finish_reason == "stop" and response_message_content != "未知":
+        return response_message_content
 
     return ""
 
@@ -185,7 +130,7 @@ def generate_sentences(worksheet):
     print("# --- Pre-processing --------------------------- #")
     properties = list(worksheet.keys())
     property_group = generate_random_property_group(worksheet, properties)
-    prompt = generate_property_group_prompt(property_group)
+    prompt, property_group = generate_property_group_prompt(property_group)
 
     print("# --- Main process ----------------------------- #")
     print("Generating sentences from properties: ", prompt)
@@ -200,7 +145,7 @@ def generate_sentences(worksheet):
     return sentences
 
 
-# Helpers --------------------------------------------
+# Logic helpers --------------------------------------------
 
 
 def get_sentences_from_openai_response(response, property_group):
@@ -212,7 +157,7 @@ def get_sentences_from_openai_response(response, property_group):
 
         # remove leading numbers
         if sentence != "" and sentence[0].isdigit():
-            sentences[idx] = sentence[3:]
+            sentences[idx] = sentence[2:]
 
     sentences = list(filter(lambda x: x != "", sentences))
 
@@ -223,6 +168,10 @@ def get_sentences_from_openai_response(response, property_group):
                 strip_whitespaces(str(prop[1])), f"{{{{{prop[0]}}}}}"
             )
 
+    # record properties used
+    for prop in property_group.items():
+        used_properties.add(prop[0])
+
     return sentences
 
 
@@ -230,8 +179,12 @@ def get_sentences_from_openai_response(response, property_group):
 
 # Main loop
 success_count = 0
+failure_count = 0
+
 while True:
-    if MAX_NUMBER_OF_GENERATIONS == 0 or success_count < MAX_NUMBER_OF_GENERATIONS:
+    if (
+        MAX_NUMBER_OF_GENERATIONS == 0 or success_count < MAX_NUMBER_OF_GENERATIONS
+    ) and (MAX_NUMBER_OF_FAILURES == 0 or failure_count < MAX_NUMBER_OF_FAILURES):
         try:
             sentences = generate_sentences(worksheet)
             save_sentences_to_textfile(sentences)
@@ -240,11 +193,16 @@ while True:
         except KeyboardInterrupt:
             print("Keyboard interrupted, exiting...")
             break
-        except Exception as e:
-            traceback.print_exc()
-            break
+        except GroupHashAlreadyUsedException:
+            print("Group hash already used, retrying...")
+            failure_count += 1
         except:
-            print("Rate limit reached or an error has occurred, retrying...")
+            print(
+                "Rate limit reached or an error has occurred, retrying in 10 seconds..."
+            )
+            traceback.print_exc()
+            failure_count += 1
+            time.sleep(10)
     else:
         break
 
@@ -254,5 +212,8 @@ if generated_property_values:
 
 if used_group_hashes:
     save_used_group_hashes_to_file(used_group_hashes)
+
+if used_properties:
+    save_used_properties_to_file(used_properties)
 
 sys.exit(0)
