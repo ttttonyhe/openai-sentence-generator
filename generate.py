@@ -15,6 +15,9 @@ load_dotenv()
 PROPERTIES_WORKBOOK_FILE = "./properties.xlsx"
 SENTENCES_TEXT_FILE = "./sentences.txt"
 GENERATED_PROPERTY_VALUES_FILE = "./generated_property_values.xlsx"
+USED_GROUP_HASHES_FILE = "./used_group_hashes.txt"
+
+MAX_NUMBER_OF_GENERATIONS = 5
 
 GPT_MODEL = "gpt-3.5-turbo"
 GPT_TEMPERATURE = 0.8
@@ -34,7 +37,7 @@ PROMPT_EXAMPLE_ASSISTANT_MESSAGE = """
 3. 张三是我的名字，我出生在 1990 年 5 月 4 日，今年 20 岁。
 """
 VALUE_PROMPT_SYSTEM_MESSAGE = """
-你将被提供一种属性 (如: 日期, 班级等)，你的任务是给出 10 个该属性的示例值 (如: 1990 年 1 月 1 日, 2020 届 1 班等)。在你的回答中除了生成的示例外请不要包含任何其他的内容，包括标点符号。如果你无法给出一个合适的示例值，请回答 "未知"。
+你将被提供一种属性 (如: 日期, 班级等)，你的任务是给出 10 个该属性的示例值 (如: 1990 年 1 月 1 日, 2020 届 1 班等)。在你的回答中除了生成的示例外请不要包含任何其他的内容，每个示例值请用 "," 隔开。如果你不能给出示例值，请回答 "未知"。
 """
 VALUE_PROMPT_EXAMPLE_USER_MESSAGE = """
 姓名
@@ -57,8 +60,87 @@ fake.seed_instance(int(time.time()))
 rate_limiter = ChatRateLimiter(request_limit=GPT_RPM, token_limit=GPT_TPM)
 openai_client = OpenAI()
 
-used_group_hashes = []
-generated_property_values = {}
+# I/O --------------------------------------------
+
+
+def read_properties_workbook():
+    worksheet = {}
+
+    if not os.path.isfile(PROPERTIES_WORKBOOK_FILE):
+        return worksheet
+
+    wb = openpyxl.load_workbook(PROPERTIES_WORKBOOK_FILE)
+    ws = wb.active
+
+    for row in ws.rows:
+        if row[0].value is None:
+            continue
+        worksheet[row[0].value] = row[1].value
+
+    return worksheet
+
+
+def read_generated_property_values_workbook():
+    property_values = {}
+
+    if not os.path.isfile(GENERATED_PROPERTY_VALUES_FILE):
+        return property_values
+
+    wb = openpyxl.load_workbook(GENERATED_PROPERTY_VALUES_FILE)
+
+    for sheet in wb.sheetnames:
+        property_values[sheet] = [cell.value for cell in wb[sheet]["A"][1:]]
+
+    print("Previously generated property values: ", property_values)
+
+    return property_values
+
+
+def read_used_group_hashes():
+    used_group_hashes = []
+
+    if not os.path.isfile(USED_GROUP_HASHES_FILE):
+        return used_group_hashes
+
+    with open(USED_GROUP_HASHES_FILE, "r") as f:
+        used_group_hashes = [int(line.strip()) for line in f.readlines()]
+
+    print("Previously used group hashes: ", used_group_hashes)
+
+    return used_group_hashes
+
+
+def save_sentences_to_textfile(sentences):
+    with open(SENTENCES_TEXT_FILE, "a") as f:
+        for sentence in sentences:
+            f.write(sentence + "\n")
+
+
+def save_generated_property_values_to_workbook(property_values):
+    print("Saving generated property values to file...")
+    writer = pd.ExcelWriter(GENERATED_PROPERTY_VALUES_FILE)
+
+    for col, values in property_values.items():
+        df = pd.DataFrame({col: values})
+        df.to_excel(writer, sheet_name=col, index=False)
+
+    writer._save()
+
+
+def save_used_group_hashes_to_file(used_group_hashes):
+    print("Saving used group hashes to file...")
+    with open(USED_GROUP_HASHES_FILE, "a") as f:
+        for group_hash in used_group_hashes:
+            f.write(str(group_hash) + "\n")
+
+
+# Data --------------------------------------------
+
+worksheet = read_properties_workbook()
+used_group_hashes = read_used_group_hashes()
+generated_property_values = read_generated_property_values_workbook()
+
+# Logic --------------------------------------------
 
 
 def generate_random_property_group(worksheet, properties):
@@ -144,6 +226,29 @@ def get_openai_response(prompt):
     return ""
 
 
+def generate_sentences(worksheet):
+    print("# ---------------------------------------------------- #")
+    print("# --- Pre-processing --------------------------- #")
+    properties = list(worksheet.keys())
+    property_group = generate_random_property_group(worksheet, properties)
+    prompt = generate_property_group_prompt(property_group)
+
+    print("# --- Main process ----------------------------- #")
+    print("Generating sentences from properties: ", prompt)
+
+    response = get_openai_response(prompt)
+    sentences = get_sentences_from_openai_response(response, property_group)
+
+    print("# --- Result ----------------------------------- #")
+    print("Complete. Sentences: ", sentences)
+    print("# ---------------------------------------------------- #")
+
+    return sentences
+
+
+# Helpers --------------------------------------------
+
+
 def get_sentences_from_openai_response(response, property_group):
     sentences = response.split("\n")
 
@@ -167,35 +272,6 @@ def get_sentences_from_openai_response(response, property_group):
     return sentences
 
 
-def generate_sentences(worksheet):
-    properties = list(worksheet.keys())
-    property_group = generate_random_property_group(worksheet, properties)
-    prompt = generate_property_group_prompt(property_group)
-
-    print("Generating sentences from properties: ", prompt)
-
-    response = get_openai_response(prompt)
-    sentences = get_sentences_from_openai_response(response, property_group)
-
-    print("Complete. Sentences: ", sentences)
-
-    return sentences
-
-
-def read_workbook():
-    worksheet = {}
-
-    wb = openpyxl.load_workbook(PROPERTIES_WORKBOOK_FILE)
-    ws = wb.active
-
-    for row in ws.rows:
-        if row[0].value is None:
-            continue
-        worksheet[row[0].value] = row[1].value
-
-    return worksheet
-
-
 def generate_random_value(prop):
     print("Generating random value for property: ", prop)
 
@@ -205,12 +281,12 @@ def generate_random_value(prop):
         # Read from previously generated values
         if prop in generated_property_values:
             random_value = random.choice(generated_property_values[prop])
-            print("Random value previously generated by ChatGPT: ", random_value)
+            print("Using random value previously generated by ChatGPT: ", random_value)
             return random_value
 
         # Generate new values
         random_value = get_openai_value_response(prop)
-        if random_value == "未知" or random_value is None:
+        if random_value == "未知" or "抱歉" in random_value or random_value is None:
             random_value = None
         else:
             generated_property_values[prop] = random_value.strip().split(", ")
@@ -237,39 +313,28 @@ def generate_random_value(prop):
     return random_value
 
 
-def save_to_textfile(sentences):
-    with open(SENTENCES_TEXT_FILE, "a") as f:
-        for sentence in sentences:
-            f.write(sentence + "\n")
+# Main --------------------------------------------
 
-
-# --------------------------------------------
-
-worksheet = read_workbook()
-counter = 0
-error_counter = 0
-
+# Main loop
+success_count = 0
 while True:
-    if counter < 5 and error_counter < 5:
+    if MAX_NUMBER_OF_GENERATIONS == 0 or success_count < MAX_NUMBER_OF_GENERATIONS:
         try:
             sentences = generate_sentences(worksheet)
-            save_to_textfile(sentences)
+            save_sentences_to_textfile(sentences)
             print("")
-            counter += 1
+            success_count += 1
         except KeyboardInterrupt:
             print("Keyboard interrupted, exiting...")
             sys.exit(0)
         except:
-            print("An error has occurred, retrying...")
-            error_counter += 1
+            print("Rate limit reached or an error has occurred, retrying...")
     else:
         break
 
+# Save transactional data
 if generated_property_values:
-    writer = pd.ExcelWriter(GENERATED_PROPERTY_VALUES_FILE)
+    save_generated_property_values_to_workbook(generated_property_values)
 
-    for col, values in generated_property_values.items():
-        df = pd.DataFrame({col: values})
-        df.to_excel(writer, sheet_name=col, index=False)
-
-    writer._save()
+if used_group_hashes:
+    save_used_group_hashes_to_file(used_group_hashes)
