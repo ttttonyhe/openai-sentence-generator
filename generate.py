@@ -27,7 +27,7 @@ MAX_NUMBER_OF_GENERATIONS = 5
 MAX_NUMBER_OF_FAILURES = 200
 
 PROMPT_SYSTEM_MESSAGE = """
-你将被提供一组属性信息，你的任务是尽你的最大可能以各种不同的形式把这组属性组装成 3 句句式多样并尽可能连贯的话。在你的回答中除了生成的句子外请不要包含任何其他的内容，并且请尽可能避免修改属性值在句子中的表现方式。如果你不能生成句子，请回答 "未知"。
+你将被提供一组属性信息，你的任务是尽你的最大可能以各种不同的形式把这组属性组装成 3 句句式多样并尽可能连贯的话。在你的回答中除了生成的句子外请不要包含任何其他的内容或标点符号，并且请尽可能避免修改属性值在句子中的表现方式。如果你不能生成句子，请回答 "未知"。
 """
 PROMPT_EXAMPLE_USER_MESSAGE = """
 姓名: 张三, 年龄: 20, 生日: 1990-05-04
@@ -126,7 +126,6 @@ def get_openai_response(prompt):
 
 
 def generate_sentences(worksheet):
-    print("# ---------------------------------------------------- #")
     print("# --- Pre-processing --------------------------- #")
     properties = list(worksheet.keys())
     property_group = generate_random_property_group(worksheet, properties)
@@ -140,7 +139,6 @@ def generate_sentences(worksheet):
 
     print("# --- Result ----------------------------------- #")
     print("Complete. Sentences: ", sentences)
-    print("# ---------------------------------------------------- #")
 
     return sentences
 
@@ -159,7 +157,7 @@ def get_sentences_from_openai_response(response, property_group):
         if sentence != "" and sentence[0].isdigit():
             sentences[idx] = sentence[2:]
 
-    sentences = list(filter(lambda x: x != "", sentences))
+    sentences = list(filter(lambda x: x != "" and x != "未知。", sentences))
 
     # templatize sentences
     for idx, sentence in enumerate(sentences):
@@ -175,6 +173,17 @@ def get_sentences_from_openai_response(response, property_group):
     return sentences
 
 
+def save_transactional_data(gpv, ugh, up):
+    if gpv:
+        save_generated_property_values_to_workbook(gpv)
+
+    if ugh:
+        save_used_group_hashes_to_file(ugh)
+
+    if up:
+        save_used_properties_to_file(up)
+
+
 # Main --------------------------------------------
 
 # Main loop
@@ -186,9 +195,14 @@ while True:
         MAX_NUMBER_OF_GENERATIONS == 0 or success_count < MAX_NUMBER_OF_GENERATIONS
     ) and (MAX_NUMBER_OF_FAILURES == 0 or failure_count < MAX_NUMBER_OF_FAILURES):
         try:
+            print("# ---------------------------------------------------- #")
             sentences = generate_sentences(worksheet)
             save_sentences_to_textfile(sentences)
-            print("")
+            save_transactional_data(
+                generated_property_values, used_group_hashes, used_properties
+            )
+            print("# ---------------------------------------------------- #\n")
+            time.sleep(2)
             success_count += 1
         except KeyboardInterrupt:
             print("Keyboard interrupted, exiting...")
@@ -206,14 +220,6 @@ while True:
     else:
         break
 
-# Save transactional data
-if generated_property_values:
-    save_generated_property_values_to_workbook(generated_property_values)
-
-if used_group_hashes:
-    save_used_group_hashes_to_file(used_group_hashes)
-
-if used_properties:
-    save_used_properties_to_file(used_properties)
+save_transactional_data(generated_property_values, used_group_hashes, used_properties)
 
 sys.exit(0)

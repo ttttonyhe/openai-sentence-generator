@@ -91,6 +91,8 @@ def read_used_properties():
 def save_sentences_to_textfile(sentences):
     with open(SENTENCES_TEXT_FILE, "a") as f:
         for sentence in sentences:
+            if sentence.strip() == "":
+                continue
             f.write(sentence + "\n")
 
 

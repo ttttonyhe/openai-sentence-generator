@@ -19,7 +19,7 @@ openai_client = OpenAI()
 PROPERTY_CLASS_KEYWORDS = {
     "address": ["地址", "住址", "地点", "位置"],
     "bank": ["网点", "银行", "分行", "支行"],
-    "date_time": ["日期", "时间", "生日"],
+    "date_time": ["日期", "时间", "生日", "期限"],
     "phone_number": ["电话", "手机", "联系方式"],
     "card_number": ["卡号", "账号", "账户"],
     "id": [
@@ -94,7 +94,7 @@ PROPERTY_CLASS_KEYWORDS = {
 }
 
 VALUE_PROMPT_SYSTEM_MESSAGE = """
-你将被提供一种属性 (如: 日期, 班级等)，你的任务是给出 10 个该属性的示例值 (如: 1990 年 1 月 1 日, 2020 届 1 班等)。在你的回答中除了生成的示例外请不要包含任何其他的内容或标点符号。如果你不能给出示例值，请回答 "未知"。
+你将被提供一种属性 (如: 日期, 班级等)，你的任务是给出 10 个该属性的示例值 (如: 1990 年 1 月 1 日, 2020 届 1 班等)。在你的回答中除了生成的示例外请不要包含任何其他的内容或标点符号，示例请务必用 "," 隔开。如果你不能给出示例值，请回答 "未知"。
 """
 VALUE_PROMPT_EXAMPLE_USER_MESSAGE = """
 姓名
@@ -162,7 +162,7 @@ def random_value(prop, generated_property_values):
         random_value = fake.city()
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["ph_value"]):
         random_value = fake.pyfloat(
-            left_digits=1, right_digits=1, positive=True, min_value=0, max_value=14
+            left_digits=1, right_digits=1, min_value=0, max_value=14
         )
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["length"]):
         random_value = f"{random_float} m"
@@ -236,6 +236,9 @@ def random_value(prop, generated_property_values):
                 ","
             )
             random_value = random.choice(new_generated_property_values[prop])
+
+        # Sleep for 2 second to avoid OpenAI rate limit
+        time.sleep(1)
     except:
         traceback.print_exc()
         print("Using Faker...")
