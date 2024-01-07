@@ -55,7 +55,8 @@ def read_generated_property_values_workbook():
     for sheet in wb.sheetnames:
         property_values[sheet] = [cell.value for cell in wb[sheet]["A"][1:]]
 
-    print("Previously generated property values: ", property_values)
+    if DEBUG:
+        print("Previously generated property values: ", property_values)
 
     return property_values
 
@@ -69,7 +70,8 @@ def read_used_group_hashes():
     with open(USED_GROUP_HASHES_FILE, "r") as f:
         used_group_hashes = [int(line.strip()) for line in f.readlines()]
 
-    print("Previously used group hashes: ", used_group_hashes)
+    if DEBUG:
+        print("Previously used group hashes: ", used_group_hashes)
 
     return used_group_hashes
 
@@ -83,7 +85,8 @@ def read_used_properties():
     with open(USED_PROPERTIES_FILE, "rb") as f:
         used_properties = pickle.load(f)
 
-    print("Previously used properties: ", used_properties)
+    if DEBUG:
+        print("Previously used properties: ", used_properties)
 
     return used_properties
 
