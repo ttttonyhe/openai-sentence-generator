@@ -51,12 +51,13 @@ def read_generated_property_values_workbook():
         return property_values
 
     wb = openpyxl.load_workbook(GENERATED_PROPERTY_VALUES_FILE)
+    ws = wb.active
 
-    for sheet in wb.sheetnames:
-        property_values[sheet] = [cell.value for cell in wb[sheet]["A"][1:]]
+    for col in ws.columns:
+        property_values[col[0].value] = [row.value for row in col[1:]]
 
-    if DEBUG:
-        print("Previously generated property values: ", property_values)
+    if DEBUGGING:
+        print(" => Previously generated property values: ", property_values)
 
     return property_values
 
@@ -70,8 +71,8 @@ def read_used_group_hashes():
     with open(USED_GROUP_HASHES_FILE, "r") as f:
         used_group_hashes = [int(line.strip()) for line in f.readlines()]
 
-    if DEBUG:
-        print("Previously used group hashes: ", used_group_hashes)
+    if DEBUGGING:
+        print(" => Previously used group hashes: ", used_group_hashes)
 
     return used_group_hashes
 
@@ -85,8 +86,8 @@ def read_used_properties():
     with open(USED_PROPERTIES_FILE, "rb") as f:
         used_properties = pickle.load(f)
 
-    if DEBUG:
-        print("Previously used properties: ", used_properties)
+    if DEBUGGING:
+        print(" => Previously used properties: ", used_properties)
 
     return used_properties
 
@@ -100,24 +101,24 @@ def save_sentences_to_textfile(sentences):
 
 
 def save_generated_property_values_to_workbook(property_values):
-    print("Saving generated property values to file...")
+    print(" => Saving generated property values to file...")
     writer = pd.ExcelWriter(GENERATED_PROPERTY_VALUES_FILE)
 
-    for col, values in property_values.items():
-        df = pd.DataFrame({col: values})
-        df.to_excel(writer, sheet_name=col, index=False)
+    # In the same sheet, save each key of the property_values dict as the first row of a column, and the values as the rest of the column
+    df = pd.DataFrame(property_values)
+    df.to_excel(writer, index=False)
 
     writer._save()
 
 
 def save_used_group_hashes_to_file(used_group_hashes):
-    print("Saving used group hashes to file...")
+    print(" => Saving used group hashes to file...")
     with open(USED_GROUP_HASHES_FILE, "w") as f:
         for group_hash in used_group_hashes:
             f.write(str(group_hash) + "\n")
 
 
 def save_used_properties_to_file(used_properties):
-    print("Saving used properties to file...")
+    print(" => Saving used properties to file...")
     with open(USED_PROPERTIES_FILE, "wb") as f:
         pickle.dump(used_properties, f)

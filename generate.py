@@ -126,19 +126,21 @@ def get_openai_response(prompt):
 
 
 def generate_sentences(worksheet):
-    print("# --- Pre-processing --------------------------- #")
+    print("\033[95m[+] Pre-processing\033[0m")
     properties = list(worksheet.keys())
     property_group = generate_random_property_group(worksheet, properties)
     prompt, property_group = generate_property_group_prompt(property_group)
+    print("\033[92m--> Pre-processing\033[0m")
 
-    print("# --- Main process ----------------------------- #")
-    print("Generating sentences from properties: ", prompt)
-
+    print("\033[95m[+] Main process\033[0m")
+    print("\033[94m => Generating sentences from properties: \033[0m", prompt)
     response = get_openai_response(prompt)
     sentences = get_sentences_from_openai_response(response, property_group)
+    print("\033[92m--> Main process done\033[0m")
 
-    print("# --- Result ----------------------------------- #")
-    print("Complete. Sentences: ", sentences)
+    print("\033[95m[+] Results\033[0m")
+    print("\033[94m => Sentences: \033[0m", sentences)
+    print("\033[92m--> Results shown\033[0m")
 
     return sentences
 
@@ -157,14 +159,25 @@ def get_sentences_from_openai_response(response, property_group):
         if sentence != "" and sentence[0].isdigit():
             sentences[idx] = sentence[2:]
 
-    sentences = list(filter(lambda x: x != "" and x != "未知。", sentences))
+    # filter out invalid sentences
+    sentences = list(
+        filter(
+            lambda x: x != ""
+            and not x.startswith("未知")
+            and not x.startswith("Sorry")
+            and not x.startswith("抱歉")
+            and not x.startswith("注意"),
+            sentences,
+        )
+    )
 
     # templatize sentences
     for idx, sentence in enumerate(sentences):
         for prop in property_group.items():
-            sentences[idx] = sentences[idx].replace(
-                strip_whitespaces(str(prop[1])), f"{{{{{prop[0]}}}}}"
-            )
+            if "是否" not in prop[0]:
+                sentences[idx] = sentences[idx].replace(
+                    strip_whitespaces(str(prop[1])), f"{{{{{prop[0]}}}}}"
+                )
 
     # record properties used
     for prop in property_group.items():
@@ -195,24 +208,28 @@ while True:
         MAX_NUMBER_OF_GENERATIONS == 0 or success_count < MAX_NUMBER_OF_GENERATIONS
     ) and (MAX_NUMBER_OF_FAILURES == 0 or failure_count < MAX_NUMBER_OF_FAILURES):
         try:
-            print("# ---------------------------------------------------- #")
+            print("\033[92m==> Generating sentences\033[0m")
             sentences = generate_sentences(worksheet)
             save_sentences_to_textfile(sentences)
+
+            print("\033[95m[+] Post-processing\033[0m")
             save_transactional_data(
                 generated_property_values, used_group_hashes, used_properties
             )
-            print("# ---------------------------------------------------- #\n")
+            print("\033[92m--> Post-processing done\033[0m")
+
+            print("\033[92m--> Generating sentences done\n\033[0m")
             time.sleep(2)
             success_count += 1
         except KeyboardInterrupt:
-            print("Keyboard interrupted, exiting...")
+            print("\033[91m => Keyboard interrupted, exiting...\033[0m")
             break
         except GroupHashAlreadyUsedException:
-            print("Group hash already used, retrying...")
+            print("\033[93m => Group hash already used, retrying...\033[0m")
             failure_count += 1
         except:
             print(
-                "Rate limit reached or an error has occurred, retrying in 10 seconds..."
+                "\033[93m => Rate limit reached or an error has occurred, retrying in 10 seconds...\033[0m"
             )
             traceback.print_exc()
             failure_count += 1
@@ -220,6 +237,8 @@ while True:
     else:
         break
 
+print("\033[95m[+] Saving transactional data\033[0m")
 save_transactional_data(generated_property_values, used_group_hashes, used_properties)
+print("\033[92m--> Saving transactional data done\033[0m")
 
 sys.exit(0)
