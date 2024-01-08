@@ -87,7 +87,7 @@ PROPERTY_CLASS_KEYWORDS = {
     "country": ["国家", "国籍"],
     "gender": ["性别"],
     "company": ["公司", "企业", "单位", "机构"],
-    "percent": ["比例", "浓度", "率"],
+    "percent": ["比例", "浓度", "率", "折旧", "概率"],
     "color": ["颜色"],
     "ip": ["IP"],
     "url": ["URL"],
@@ -165,29 +165,29 @@ def random_value(prop, generated_property_values):
             left_digits=1, right_digits=1, min_value=0, max_value=14
         )
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["length"]):
-        random_value = f"{random_float} m"
+        random_value = f"{random_float} 米"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["weight"]):
-        random_value = f"{random_float} kg"
+        random_value = f"{random_float} 千克"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["temperature"]):
-        random_value = f"{random_float} °C"
+        random_value = f"{random_float} 摄氏度"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["speed"]):
-        random_value = f"{random_float} km/h"
+        random_value = f"{random_float} 公里每小时"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["area"]):
-        random_value = f"{random_float} m²"
+        random_value = f"{random_float} 平方米"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["volume"]):
-        random_value = f"{random_float} m³"
+        random_value = f"{random_float} 立方米"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["pressure"]):
-        random_value = f"{random_float} Pa"
+        random_value = f"{random_float} 帕"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["energy"]):
-        random_value = f"{random_float} J"
+        random_value = f"{random_float} 焦"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["power"]):
-        random_value = f"{random_float} W"
+        random_value = f"{random_float} 瓦"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["voltage"]):
-        random_value = f"{random_float} V"
+        random_value = f"{random_float} 伏"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["current"]):
-        random_value = f"{random_float} A"
+        random_value = f"{random_float} 安"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["frequency"]):
-        random_value = f"{random_float} Hz"
+        random_value = f"{random_float} 赫兹"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["angle"]):
         random_value = f"{fake.pyfloat(left_digits=2, right_digits=2, positive=True, min_value=0, max_value=100)} °"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["geolocation"]):
