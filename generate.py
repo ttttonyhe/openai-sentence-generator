@@ -23,7 +23,7 @@ from helpers import (
 )
 from generate_value import random_value
 
-MAX_NUMBER_OF_GENERATIONS = 5
+MAX_NUMBER_OF_GENERATIONS = 0
 MAX_NUMBER_OF_FAILURES = 200
 
 PROMPT_SYSTEM_MESSAGE = """
@@ -166,7 +166,9 @@ def get_sentences_from_openai_response(response, property_group):
             and not x.startswith("未知")
             and not x.startswith("Sorry")
             and not x.startswith("抱歉")
-            and not x.startswith("注意"),
+            and not x.startswith("注意")
+            and "Note" not in x
+            and "连贯" not in x,
             sentences,
         )
     )
