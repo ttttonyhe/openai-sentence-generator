@@ -233,8 +233,8 @@ def random_value(prop, generated_property_values):
         # If no previously generated values, generate new values
         random_value = get_openai_value_response(prop)
         if (
-            random_value.startsWith("未知")
-            or random_value.startsWith("请")
+            random_value.startswith("未知")
+            or random_value.startswith("请")
             or "抱歉" in random_value
             or random_value is None
         ):
