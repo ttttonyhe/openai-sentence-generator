@@ -54,7 +54,9 @@ def read_generated_property_values_workbook():
     ws = wb.active
 
     for col in ws.columns:
-        property_values[col[0].value] = [row.value for row in col[1:]]
+        property_values[col[0].value] = [
+            row.value for row in col[1:] if row.value is not None
+        ]
 
     if DEBUGGING:
         print(" => Previously generated property values: ", property_values)
@@ -104,8 +106,9 @@ def save_generated_property_values_to_workbook(property_values):
     print(" => Saving generated property values to file...")
     writer = pd.ExcelWriter(GENERATED_PROPERTY_VALUES_FILE)
 
-    # In the same sheet, save each key of the property_values dict as the first row of a column, and the values as the rest of the column
-    df = pd.DataFrame(property_values)
+    df = pd.DataFrame.from_dict(property_values, orient="index")
+    df = df.transpose()
+
     df.to_excel(writer, index=False)
 
     writer._save()
