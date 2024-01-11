@@ -1,3 +1,6 @@
 .env
 __pycache__
 test.py
+store
+result
+data
