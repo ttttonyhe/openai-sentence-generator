@@ -47,6 +47,11 @@ def sentences2json(
                 f"{property_idx + 1}. {property_name}: {property_value}\n"
             )
 
+            # Replace property names with values in sentence
+            sentence = sentence.replace(
+                f"{{{{{property_name}}}}}", property_values[property_name]
+            )
+
         human = human_template.replace("{{sentence_str}}", sentence)
         human = human.replace("{{name_list_str}}", property_list_str.strip())
 
