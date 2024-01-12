@@ -13,7 +13,7 @@ from helpers import (
 )
 
 
-def sentences2json(
+def sentences2jsons(
     sentences,
     generated_property_values,
     human_template,
@@ -78,7 +78,7 @@ def sentences2json(
 
 
 def text2json_equal(sentences):
-    return sentences2json(
+    return sentences2jsons(
         sentences,
         generated_property_values,
         human_template,
@@ -96,7 +96,7 @@ def text2json_reduce(sentences, sentence_count=NUMBER_OF_REDUCED_JSONS):
 
     candidate_sentences = random.sample(candidate_sentences, sentence_count)
 
-    return sentences2json(
+    return sentences2jsons(
         candidate_sentences,
         generated_property_values,
         human_template,
