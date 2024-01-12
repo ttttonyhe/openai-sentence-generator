@@ -39,9 +39,9 @@ def sentences2json(
         # Generate name_list_str value
         property_list_str = ""
         for property_idx, property_name in enumerate(property_names):
-            property_value = random_value(
+            property_value, _ = random_value(
                 property_name, generated_property_values, True
-            )[0]
+            )
             property_values[property_name] = property_value
             property_list_str += (
                 f"{property_idx + 1}. {property_name}: {property_value}\n"
@@ -90,7 +90,7 @@ def text2json_equal(sentences):
 def text2json_reduce(sentences, sentence_count=NUMBER_OF_REDUCED_JSONS):
     candidate_sentences = sentences[:]
 
-    # if not enough sentences available, repeat sentences
+    # If not enough sentences available, repeat sentences
     while len(candidate_sentences) < sentence_count:
         candidate_sentences.extend(candidate_sentences)
 
@@ -124,7 +124,11 @@ for idx, human_template, bot_template, functions in templates:
             function_name = "reduce"
             sentences_jsons = text2json_reduce(sentences)
 
-        if len(sentences_jsons["human"]) > 0 and len(sentences_jsons["bot"]) > 0:
+        if (
+            sentences_jsons
+            and len(sentences_jsons["human"]) > 0
+            and len(sentences_jsons["bot"]) > 0
+        ):
             save_sentences_jsons_to_workbook(
                 sentences_jsons, f"{idx}_{function_name}.xlsx"
             )
