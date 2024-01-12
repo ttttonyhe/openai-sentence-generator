@@ -24,6 +24,36 @@ def strip_whitespaces(text):
     return re.sub(r"\s+", "", text)
 
 
+# Printers ----------------------------------------
+
+
+def print_header(text):
+    print(f"\033[95m{text}\033[0m")
+
+
+def print_success(text):
+    print(f"\033[92m{text}\033[0m")
+
+
+def print_info(title, text=None):
+    if text is None:
+        print(f"\033[94m{title}\033[0m")
+        return
+
+    if not VERBOSE:
+        return
+
+    print(f"\033[94m{title}: {text}\033[0m")
+
+
+def print_warning(text):
+    print(f"\033[93m{text}\033[0m")
+
+
+def print_error(text):
+    print(f"\033[91m{text}\033[0m")
+
+
 # I/O --------------------------------------------
 
 
@@ -59,7 +89,7 @@ def read_generated_property_values_workbook():
         ]
 
     if DEBUGGING:
-        print(" => Previously generated property values: ", property_values)
+        print_info(" => Previously generated property values: ", property_values)
 
     return property_values
 
@@ -74,7 +104,7 @@ def read_used_group_hashes():
         used_group_hashes = [int(line.strip()) for line in f.readlines()]
 
     if DEBUGGING:
-        print(" => Previously used group hashes: ", used_group_hashes)
+        print_info(" => Previously used group hashes: ", used_group_hashes)
 
     return used_group_hashes
 
@@ -89,9 +119,46 @@ def read_used_properties():
         used_properties = pickle.load(f)
 
     if DEBUGGING:
-        print(" => Previously used properties: ", used_properties)
+        print_info(" => Previously used properties: ", used_properties)
 
     return used_properties
+
+
+def read_templates_workbook():
+    templates = []
+    tpl_df = pd.read_excel(TEMPLATES_WORKBOOK_FILE)
+
+    if not all(column in tpl_df.columns for column in REQUIRED_COLUMNS):
+        raise ValueError("One or more required columns are missing")
+
+    for idx, row in tpl_df.iterrows():
+        if not all(tpl_str in row["human_tpl"] for tpl_str in HUMAN_TEMPLATE_STRINGS):
+            raise ValueError(f"Human template string is missing from row {idx}")
+
+        if not all(tpl_str in row["bot_tpl"] for tpl_str in BOT_TEMPLATE_STRINGS):
+            raise ValueError(f"Bot template string is missing from row {idx}")
+
+        functions = row["function"].split(",")
+        if len(functions) == 0:
+            raise ValueError(f"Function is missing from row {idx}")
+
+        row_tuple = (idx, row["human_tpl"], row["bot_tpl"], functions)
+        templates.append(row_tuple)
+
+    if DEBUGGING:
+        print_info(" => Templates: ", templates)
+
+    return templates
+
+
+def read_sentences_textfile():
+    with open(SENTENCES_DATA_TEXT_FILE, "r") as f:
+        sentences = [line.strip() for line in f.readlines()]
+
+    if DEBUGGING:
+        print_info(" => Sentences: ", sentences)
+
+    return sentences
 
 
 def save_sentences_to_textfile(sentences):
@@ -103,7 +170,7 @@ def save_sentences_to_textfile(sentences):
 
 
 def save_generated_property_values_to_workbook(property_values):
-    print(" => Saving generated property values to file...")
+    print_info(" => Saving generated property values to file...")
     writer = pd.ExcelWriter(GENERATED_PROPERTY_VALUES_FILE)
 
     df = pd.DataFrame.from_dict(property_values, orient="index")
@@ -115,13 +182,24 @@ def save_generated_property_values_to_workbook(property_values):
 
 
 def save_used_group_hashes_to_file(used_group_hashes):
-    print(" => Saving used group hashes to file...")
+    print_info(" => Saving used group hashes to file...")
     with open(USED_GROUP_HASHES_FILE, "w") as f:
         for group_hash in used_group_hashes:
             f.write(str(group_hash) + "\n")
 
 
 def save_used_properties_to_file(used_properties):
-    print(" => Saving used properties to file...")
+    print_info(" => Saving used properties to file...")
     with open(USED_PROPERTIES_FILE, "wb") as f:
         pickle.dump(used_properties, f)
+
+
+def save_sentences_jsons_to_workbook(sentences_jsons, filename):
+    print_info(f" => Saving sentences jsons to file {filename}...")
+    writer = pd.ExcelWriter(f"{TEXT2JSON_WORKBOOK_DIR}/{filename}")
+
+    df = pd.DataFrame.from_dict(sentences_jsons)
+
+    df.to_excel(writer, index=False)
+
+    writer._save()

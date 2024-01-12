@@ -20,6 +20,11 @@ from helpers import (
     save_generated_property_values_to_workbook,
     save_used_group_hashes_to_file,
     save_used_properties_to_file,
+    print_header,
+    print_success,
+    print_info,
+    print_warning,
+    print_error,
 )
 from generate_value import random_value
 
@@ -126,21 +131,21 @@ def get_openai_response(prompt):
 
 
 def generate_sentences(worksheet):
-    print("\033[95m[+] Pre-processing\033[0m")
+    print_header("[+] Pre-processing")
     properties = list(worksheet.keys())
     property_group = generate_random_property_group(worksheet, properties)
     prompt, property_group = generate_property_group_prompt(property_group)
-    print("\033[92m--> Pre-processing\033[0m")
+    print_success("--> Pre-processing")
 
-    print("\033[95m[+] Main process\033[0m")
-    print("\033[94m => Generating sentences from properties: \033[0m", prompt)
+    print_header("[+] Main process")
+    print_info(" => Generating sentences from properties: ", prompt)
     response = get_openai_response(prompt)
     sentences = get_sentences_from_openai_response(response, property_group)
-    print("\033[92m--> Main process done\033[0m")
+    print_success("--> Main process done")
 
-    print("\033[95m[+] Results\033[0m")
-    print("\033[94m => Sentences: \033[0m", sentences)
-    print("\033[92m--> Results shown\033[0m")
+    print_header("[+] Results")
+    print_info(" => Sentences: ", sentences)
+    print_success("--> Results shown")
 
     return sentences
 
@@ -210,28 +215,28 @@ while True:
         MAX_NUMBER_OF_GENERATIONS == 0 or success_count < MAX_NUMBER_OF_GENERATIONS
     ) and (MAX_NUMBER_OF_FAILURES == 0 or failure_count < MAX_NUMBER_OF_FAILURES):
         try:
-            print("\033[92m==> Generating sentences\033[0m")
+            print_success("==> Generating sentences")
             sentences = generate_sentences(worksheet)
             save_sentences_to_textfile(sentences)
 
-            print("\033[95m[+] Post-processing\033[0m")
+            print_header("[+] Post-processing")
             save_transactional_data(
                 generated_property_values, used_group_hashes, used_properties
             )
-            print("\033[92m--> Post-processing done\033[0m")
+            print_success("--> Post-processing done")
 
-            print("\033[92m--> Generating sentences done\n\033[0m")
+            print_success("--> Generating sentences done\n")
             time.sleep(2)
             success_count += 1
         except KeyboardInterrupt:
-            print("\033[91m => Keyboard interrupted, exiting...\033[0m")
+            print_error(" => Keyboard interrupted, exiting...")
             break
         except GroupHashAlreadyUsedException:
-            print("\033[93m => Group hash already used, retrying...\033[0m")
+            print_warning(" => Group hash already used, retrying...")
             failure_count += 1
         except:
-            print(
-                "\033[93m => Rate limit reached or an error has occurred, retrying in 10 seconds...\033[0m"
+            print_warning(
+                " => Rate limit reached or an error has occurred, retrying in 10 seconds..."
             )
             traceback.print_exc()
             failure_count += 1
@@ -239,8 +244,8 @@ while True:
     else:
         break
 
-print("\033[95m[+] Saving transactional data\033[0m")
+print_header("[+] Saving transactional data")
 save_transactional_data(generated_property_values, used_group_hashes, used_properties)
-print("\033[92m--> Saving transactional data done\033[0m")
+print_success("--> Saving transactional data done")
 
 sys.exit(0)
