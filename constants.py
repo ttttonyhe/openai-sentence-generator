@@ -25,4 +25,6 @@ HUMAN_TEMPLATE_STRINGS = ["{{sentence_str}}", "{{name_list_str}}"]
 BOT_TEMPLATE_STRINGS = ["{{name_json_str}}"]
 EQUAL_FUNCTION_NAME = "text2json_equal"
 REDUCE_FUNCTION_NAME = "text2json_reduce"
-NUMBER_OF_REDUCED_JSONS = 10
+
+TEXT2JSON_EQUAL_LIMIT = 5
+TEXT2JSON_REDUCE_LIMIT = 10

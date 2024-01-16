@@ -1,10 +1,20 @@
 import os
 import re
 import pickle
+import random
 import openpyxl
 import pandas as pd
 
 from constants import *
+
+
+# Patches ----------------------------------
+def random_sample_ordered(source_list, sample_size):
+    return [
+        source_list[i]
+        for i in sorted(random.sample(range(len(source_list)), sample_size))
+    ]
+
 
 # Exceptions --------------------------------------
 
@@ -196,10 +206,13 @@ def save_used_properties_to_file(used_properties):
 
 def save_sentences_jsons_to_workbook(sentences_jsons, filename):
     print_info(f" => Saving sentences jsons to file {filename}...")
-    writer = pd.ExcelWriter(f"{TEXT2JSON_WORKBOOK_DIR}/{filename}")
+    workbook_path = f"{TEXT2JSON_WORKBOOK_DIR}/{filename}"
 
-    df = pd.DataFrame.from_dict(sentences_jsons)
+    old_df = pd.DataFrame(columns=["human", "bot"])
+    if os.path.exists(workbook_path):
+        old_df = pd.read_excel(workbook_path)
 
-    df.to_excel(writer, index=False)
+    new_df = pd.DataFrame(sentences_jsons)
+    df = pd.concat([old_df, new_df])
 
-    writer._save()
+    df.to_excel(workbook_path, index=False)

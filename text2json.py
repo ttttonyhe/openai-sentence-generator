@@ -6,6 +6,7 @@ import pandas as pd
 from constants import *
 from generate_value import random_value
 from helpers import (
+    random_sample_ordered,
     read_templates_workbook,
     read_generated_property_values_workbook,
     read_sentences_textfile,
@@ -13,12 +14,12 @@ from helpers import (
 )
 
 
-def sentences2jsons(
+def sentences2json(
     sentences,
     generated_property_values,
     human_template,
     bot_template,
-    random_property_reduction=False,
+    is_random_property_reduced=False,
 ):
     if not human_template or not bot_template:
         raise ValueError("Human and bot templates must be provided")
@@ -36,6 +37,9 @@ def sentences2jsons(
         for match in re.finditer(r"{{(.*?)}}", sentence):
             property_names.append(match.group(1))
 
+        # Shuffle property names
+        random.shuffle(property_names)
+
         # Generate name_list_str value
         property_list_str = ""
         for property_idx, property_name in enumerate(property_names):
@@ -47,7 +51,7 @@ def sentences2jsons(
                 f"{property_idx + 1}. {property_name}: {property_value}\n"
             )
 
-            # Replace property names with values in sentence
+            # Replace property names with their values in the sentence
             sentence = sentence.replace(
                 f"{{{{{property_name}}}}}", property_values[property_name]
             )
@@ -56,8 +60,8 @@ def sentences2jsons(
         human = human.replace("{{name_list_str}}", property_list_str.strip())
 
         # Drop at least 1 property, but not all properties
-        if random_property_reduction:
-            property_names = random.sample(
+        if is_random_property_reduced:
+            property_names = random_sample_ordered(
                 property_names, random.randint(1, len(property_names) - 1)
             )
 
@@ -77,17 +81,14 @@ def sentences2jsons(
     return sentences_jsons
 
 
-def text2json_equal(sentences):
-    return sentences2jsons(
-        sentences,
-        generated_property_values,
-        human_template,
-        bot_template,
-        False,
-    )
-
-
-def text2json_reduce(sentences, sentence_count=NUMBER_OF_REDUCED_JSONS):
+def text2json_function(
+    sentences,
+    generated_property_values,
+    human_template,
+    bot_template,
+    is_random_property_reduced,
+    sentence_count,
+):
     candidate_sentences = sentences[:]
 
     # If not enough sentences available, repeat sentences
@@ -96,39 +97,53 @@ def text2json_reduce(sentences, sentence_count=NUMBER_OF_REDUCED_JSONS):
 
     candidate_sentences = random.sample(candidate_sentences, sentence_count)
 
-    return sentences2jsons(
+    return sentences2json(
         candidate_sentences,
         generated_property_values,
         human_template,
         bot_template,
-        True,
+        is_random_property_reduced,
     )
 
 
 # --------------------------------------------
 
-sentences = read_sentences_textfile()
-generated_property_values = read_generated_property_values_workbook()
-templates = read_templates_workbook()
 
+def text2json():
+    sentences = read_sentences_textfile()
+    generated_property_values = read_generated_property_values_workbook()
+    templates = read_templates_workbook()
 
-for idx, human_template, bot_template, functions in templates:
-    for function in functions:
-        function_name = "equal"
-        sentences_jsons = {}
+    for idx, human_template, bot_template, functions in templates:
+        for function in functions:
+            function_name = "text2json_equal"
+            sentences_jsons = {}
 
-        if function == EQUAL_FUNCTION_NAME:
-            function_name = "equal"
-            sentences_jsons = text2json_equal(sentences)
-        elif function == REDUCE_FUNCTION_NAME:
-            function_name = "reduce"
-            sentences_jsons = text2json_reduce(sentences)
+            if function == EQUAL_FUNCTION_NAME:
+                sentences_jsons = text2json_function(
+                    sentences,
+                    generated_property_values,
+                    human_template,
+                    bot_template,
+                    False,
+                    TEXT2JSON_EQUAL_LIMIT,
+                )
+            elif function == REDUCE_FUNCTION_NAME:
+                function_name = "text2json_reduce"
+                sentences_jsons = text2json_function(
+                    sentences,
+                    generated_property_values,
+                    human_template,
+                    bot_template,
+                    True,
+                    TEXT2JSON_REDUCE_LIMIT,
+                )
 
-        if (
-            sentences_jsons
-            and len(sentences_jsons["human"]) > 0
-            and len(sentences_jsons["bot"]) > 0
-        ):
-            save_sentences_jsons_to_workbook(
-                sentences_jsons, f"{idx}_{function_name}.xlsx"
-            )
+            if (
+                sentences_jsons
+                and len(sentences_jsons["human"]) > 0
+                and len(sentences_jsons["bot"]) > 0
+            ):
+                save_sentences_jsons_to_workbook(
+                    sentences_jsons, f"{function_name}.xlsx"
+                )
