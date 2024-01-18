@@ -1,5 +1,5 @@
 from constants import *
-from helpers import read_used_properties
+from generate_helpers import read_used_properties
 
 used_properties = read_used_properties()
 

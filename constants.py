@@ -1,6 +1,6 @@
 DEBUGGING = False
 
-# OpenAI Sentence Generator
+# OpenAI Sentence Generator ----------------------
 PROPERTIES_WORKBOOK_FILE = "./data/properties.xlsx"
 SENTENCES_TEXT_FILE = "./result/sentences.txt"
 GENERATED_PROPERTY_VALUES_FILE = "./store/generated_property_values.xlsx"
@@ -13,18 +13,42 @@ GPT_FREQUENCY_PENALTY = 0.8
 GPT_TPM = 60000
 GPT_RPM = 500
 
-# Text2Json
+# Human-Bot QA Generator -------------------------
 VERBOSE = False
+REQUIRED_COLUMNS = ["human_tpl", "bot_tpl", "function"]
 
 SENTENCES_DATA_TEXT_FILE = "./data/sentences.txt"
-TEMPLATES_WORKBOOK_FILE = "./data/templates.xlsx"
-TEXT2JSON_WORKBOOK_DIR = "./result"
+TEXT2JSON_TEMPLATES_WORKBOOK_FILE = "./data/text2json_templates.xlsx"
+JSON2JSON_TEMPLATES_WORKBOOK_FILE = "./data/json2json_templates.xlsx"
+TEXT2TABLE_TEMPLATES_WORKBOOK_FILE = "./data/text2table_templates.xlsx"
+GEN_FILE_WORKBOOK_DIR = "./result"
 
-REQUIRED_COLUMNS = ["human_tpl", "bot_tpl", "function"]
-HUMAN_TEMPLATE_STRINGS = ["{{sentence_str}}", "{{name_list_str}}"]
-BOT_TEMPLATE_STRINGS = ["{{name_json_str}}"]
-EQUAL_FUNCTION_NAME = "text2json_equal"
-REDUCE_FUNCTION_NAME = "text2json_reduce"
+# Text2JSON -------------------
+TEXT2JSON_HUMAN_TEMPLATE_STRINGS = ["{{sentence_str}}", "{{name_list_str}}"]
+TEXT2JSON_BOT_TEMPLATE_STRINGS = ["{{name_json_str}}"]
+TEXT2JSON_EQUAL_FUNCTION_NAME = "text2json_equal"
+TEXT2JSON_REDUCE_FUNCTION_NAME = "text2json_reduce"
 
-TEXT2JSON_EQUAL_LIMIT = 5
-TEXT2JSON_REDUCE_LIMIT = 10
+# 配置每个用例的生成上限
+TEXT2JSON_EQUAL_LIMIT = 2
+TEXT2JSON_REDUCE_LIMIT = 3
+
+# JSON2JSON -------------------
+JSON2JSON_REDUCE_BY_NAME_FUNCTION_NAME = "json2json_reduce_by_name"
+JSON2JSON_REDUCE_BY_JSON_FUNCTION_NAME = "json2json_reduce_by_json"
+JSON2JSON_HUMAN_TEMPLATE_STRINGS = ["{{source_json_str}}", "{{target_name_str}}"]
+JSON2JSON_BOT_TEMPLATE_STRINGS = ["{{name_json_str}}"]
+
+# 配置每个用例的生成上限
+JSON2JSON_REDUCE_BY_NAME_LIMIT = 2
+JSON2JSON_REDUCE_BY_JSON_LIMIT = 3
+
+# Text2Table ------------------
+TEXT2TABLE_EQUAL_FUNCTION_NAME = "text2table_equal"
+TEXT2TABLE_REDUCE_FUNCTION_NAME = "text2table_reduce"
+TEXT2TABLE_HUMAN_TEMPLATE_STRINGS = ["{{sentence_str}}", "{{name_list_str}}"]
+TEXT2TABLE_BOT_TEMPLATE_STRINGS = ["{{name_table_str}}"]
+
+# 配置每个用例的生成上限
+TEXT2TABLE_EQUAL_LIMIT = 2
+TEXT2TABLE_REDUCE_LIMIT = 3

@@ -8,7 +8,7 @@ from constants import *
 from openai import OpenAI
 from dotenv import load_dotenv
 from openlimit import ChatRateLimiter
-from helpers import (
+from generate_helpers import (
     GroupHashAlreadyUsedException,
     strip_whitespaces,
     compress_newlines,

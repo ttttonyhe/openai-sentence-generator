@@ -6,7 +6,7 @@ from faker import Faker
 from constants import *
 from openai import OpenAI
 from dotenv import load_dotenv
-from helpers import (
+from generate_helpers import (
     strip_whitespaces,
     print_header,
     print_success,
@@ -20,8 +20,6 @@ load_dotenv()
 
 fake = Faker("zh_CN")
 fake.seed_instance(int(time.time()))
-rate_limiter = ChatRateLimiter(request_limit=GPT_RPM, token_limit=GPT_TPM)
-openai_client = OpenAI()
 
 PROPERTY_CLASS_KEYWORDS = {
     "address": ["地址", "住址", "地点", "位置"],
@@ -113,6 +111,9 @@ VALUE_PROMPT_EXAMPLE_ASSISTANT_MESSAGE = """
 
 
 def get_openai_value_response(prop):
+    rate_limiter = ChatRateLimiter(request_limit=GPT_RPM, token_limit=GPT_TPM)
+    openai_client = OpenAI()
+
     openai_params = {
         "model": GPT_MODEL,
         "temperature": GPT_TEMPERATURE,
@@ -139,7 +140,7 @@ def get_openai_value_response(prop):
     return None
 
 
-def random_value(prop, generated_property_values, offline=False):
+def random_value(prop, generated_property_values, offline=False, ignore_units=False):
     print_info(" => Generating random value for property: ", prop)
 
     random_value = None
@@ -153,7 +154,7 @@ def random_value(prop, generated_property_values, offline=False):
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["bank"]):
         random_value = f"{fake.company()} 银行"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["date_time"]):
-        random_value = fake.date(pattern="%Y年%-m月%-d日")
+        random_value = fake.date(pattern="%Y年%m月%d日")
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["phone_number"]):
         random_value = fake.phone_number()
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["card_number"]):
@@ -169,29 +170,29 @@ def random_value(prop, generated_property_values, offline=False):
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["ph_value"]):
         random_value = fake.pyfloat(min_value=0, max_value=14)
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["length"]):
-        random_value = f"{random_float} 米"
+        random_value = random_float if ignore_units else f"{random_float} 米"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["weight"]):
-        random_value = f"{random_float} 千克"
+        random_value = random_float if ignore_units else f"{random_float} 千克"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["temperature"]):
-        random_value = f"{random_float} 摄氏度"
+        random_value = random_float if ignore_units else f"{random_float} 摄氏度"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["speed"]):
-        random_value = f"{random_float} 公里每小时"
+        random_value = random_float if ignore_units else f"{random_float} 公里每小时"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["area"]):
-        random_value = f"{random_float} 平方米"
+        random_value = random_float if ignore_units else f"{random_float} 平方米"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["volume"]):
-        random_value = f"{random_float} 立方米"
+        random_value = random_float if ignore_units else f"{random_float} 立方米"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["pressure"]):
-        random_value = f"{random_float} 帕"
+        random_value = random_float if ignore_units else f"{random_float} 帕"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["energy"]):
-        random_value = f"{random_float} 焦"
+        random_value = random_float if ignore_units else f"{random_float} 焦"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["power"]):
-        random_value = f"{random_float} 瓦"
+        random_value = random_float if ignore_units else f"{random_float} 瓦"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["voltage"]):
-        random_value = f"{random_float} 伏"
+        random_value = random_float if ignore_units else f"{random_float} 伏"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["current"]):
-        random_value = f"{random_float} 安"
+        random_value = random_float if ignore_units else f"{random_float} 安"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["frequency"]):
-        random_value = f"{random_float} 赫兹"
+        random_value = random_float if ignore_units else f"{random_float} 赫兹"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["angle"]):
         random_value = f"{fake.pyfloat(positive=True, min_value=1, max_value=100)} °"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["geolocation"]):
@@ -203,7 +204,9 @@ def random_value(prop, generated_property_values, offline=False):
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["content"]):
         random_value = fake.catch_phrase()
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["money"]):
-        random_value = f"{fake.random_int(min=1)} 元"
+        random_value = (
+            fake.random_int(min=1) if ignore_units else f"{fake.random_int(min=1)} 元"
+        )
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["country"]):
         random_value = fake.country()
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["gender"]):

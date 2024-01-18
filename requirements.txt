@@ -4,3 +4,4 @@ openlimit
 faker
 pandas
 openpyxl
+jinja2

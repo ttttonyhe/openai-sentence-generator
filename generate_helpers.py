@@ -8,14 +8,6 @@ import pandas as pd
 from constants import *
 
 
-# Patches ----------------------------------
-def random_sample_ordered(source_list, sample_size):
-    return [
-        source_list[i]
-        for i in sorted(random.sample(range(len(source_list)), sample_size))
-    ]
-
-
 # Exceptions --------------------------------------
 
 
@@ -134,35 +126,8 @@ def read_used_properties():
     return used_properties
 
 
-def read_templates_workbook():
-    templates = []
-    tpl_df = pd.read_excel(TEMPLATES_WORKBOOK_FILE)
-
-    if not all(column in tpl_df.columns for column in REQUIRED_COLUMNS):
-        raise ValueError("One or more required columns are missing")
-
-    for idx, row in tpl_df.iterrows():
-        if not all(tpl_str in row["human_tpl"] for tpl_str in HUMAN_TEMPLATE_STRINGS):
-            raise ValueError(f"Human template string is missing from row {idx}")
-
-        if not all(tpl_str in row["bot_tpl"] for tpl_str in BOT_TEMPLATE_STRINGS):
-            raise ValueError(f"Bot template string is missing from row {idx}")
-
-        functions = row["function"].split(",")
-        if len(functions) == 0:
-            raise ValueError(f"Function is missing from row {idx}")
-
-        row_tuple = (idx, row["human_tpl"], row["bot_tpl"], functions)
-        templates.append(row_tuple)
-
-    if DEBUGGING:
-        print_info(" => Templates: ", templates)
-
-    return templates
-
-
 def read_sentences_textfile():
-    with open(SENTENCES_DATA_TEXT_FILE, "r") as f:
+    with open(SENTENCES_DATA_TEXT_FILE, "r", encoding="utf-8") as f:
         sentences = [line.strip() for line in f.readlines()]
 
     if DEBUGGING:
@@ -202,17 +167,3 @@ def save_used_properties_to_file(used_properties):
     print_info(" => Saving used properties to file...")
     with open(USED_PROPERTIES_FILE, "wb") as f:
         pickle.dump(used_properties, f)
-
-
-def save_sentences_jsons_to_workbook(sentences_jsons, filename):
-    print_info(f" => Saving sentences jsons to file {filename}...")
-    workbook_path = f"{TEXT2JSON_WORKBOOK_DIR}/{filename}"
-
-    old_df = pd.DataFrame(columns=["human", "bot"])
-    if os.path.exists(workbook_path):
-        old_df = pd.read_excel(workbook_path)
-
-    new_df = pd.DataFrame(sentences_jsons)
-    df = pd.concat([old_df, new_df])
-
-    df.to_excel(workbook_path, index=False)
