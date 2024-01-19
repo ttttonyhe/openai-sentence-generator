@@ -14,9 +14,11 @@ from generate_helpers import (
 from gen_helpers import (
     task_config,
     sample_sentences,
+    display_char_count,
     random_sample_ordered,
     read_templates_workbook,
     save_gen_result_to_workbook,
+    replace_properties_with_aliases,
 )
 from gen_text_tpl import property_list_tpl, PROPERTY_LIST_STYLE_COUNT
 
@@ -27,6 +29,8 @@ function_names.json2json_reduce_by_name = JSON2JSON_REDUCE_BY_NAME_FUNCTION_NAME
 function_names.json2json_reduce_by_json = JSON2JSON_REDUCE_BY_JSON_FUNCTION_NAME
 function_names.text2table_equal = TEXT2TABLE_EQUAL_FUNCTION_NAME
 function_names.text2table_reduce = TEXT2TABLE_REDUCE_FUNCTION_NAME
+function_names.text2table_equal_markdown = TEXT2TABLE_EQUAL_MARKDOWN_FUNCTION_NAME
+function_names.text2table_reduce_markdown = TEXT2TABLE_REDUCE_MARKDOWN_FUNCTION_NAME
 
 
 def qa_generator(
@@ -71,7 +75,7 @@ def qa_generator(
                     property_name,
                     generated_property_values,
                     offline=True,
-                    ignore_units=False,
+                    ignore_units=True,
                 )
                 property_values[property_name] = str(property_value)
 
@@ -110,11 +114,6 @@ def gen_text2json(
     is_random_property_reduced,
 ):
     # Generate name_list_str value
-    property_list_str = property_list_tpl(
-        property_names, random.randint(1, PROPERTY_LIST_STYLE_COUNT)
-    )
-    human = human_tpl.render(sentence_str=sentence, name_list_str=property_list_str)
-
     # If required, drop at least 1 property, but not all properties
     if is_random_property_reduced:
         if len(property_names) == 1:
@@ -124,10 +123,19 @@ def gen_text2json(
             property_names, random.randint(1, len(property_names) - 1)
         )
 
+    property_list_str = property_list_tpl(
+        property_names, random.randint(1, PROPERTY_LIST_STYLE_COUNT)
+    )
+
+    human = human_tpl.render(sentence_str=sentence, name_list_str=property_list_str)
+
     # Generate name_json_str value
     property_value_dict = {}
     for property_name in property_names:
         property_value_dict[property_name] = property_values[property_name]
+
+    if USE_PROPERTY_ALIASES:
+        property_value_dict = replace_properties_with_aliases(property_value_dict)
 
     bot = bot_tpl.render(
         name_json_str=json.dumps(property_value_dict, indent=4, ensure_ascii=False)
@@ -180,9 +188,75 @@ def gen_json2json(
     # Generate name_json_str value
     property_value_dict = {key: property_value_dict[key] for key in property_names}
 
+    if USE_PROPERTY_ALIASES:
+        property_value_dict = replace_properties_with_aliases(property_value_dict)
+
     bot = bot_tpl.render(
         name_json_str=json.dumps(property_value_dict, indent=4, ensure_ascii=False)
     )
+
+    return human, bot
+
+
+def gen_text2table(
+    sentence,
+    property_names,
+    property_values,
+    human_tpl,
+    bot_tpl,
+    is_random_property_reduced,
+    is_markdown=False,
+):
+    # Generate name_list_str value
+    # If required, drop at least 1 property, but not all properties
+    if is_random_property_reduced:
+        if len(property_names) == 1:
+            return None, None
+
+        property_names = random_sample_ordered(
+            property_names, random.randint(1, len(property_names) - 1)
+        )
+
+    property_list_str = property_list_tpl(
+        property_names, random.randint(1, PROPERTY_LIST_STYLE_COUNT)
+    )
+
+    human = human_tpl.render(sentence_str=sentence, name_list_str=property_list_str)
+
+    # Generate name_table_str value
+    property_value_dict = {}
+    for property_name in property_names:
+        property_value_dict[property_name] = property_values[property_name]
+
+    if USE_PROPERTY_ALIASES:
+        property_value_dict = replace_properties_with_aliases(property_value_dict)
+        property_names = list(property_value_dict.keys())
+
+    name_table_str = ""
+    if is_markdown:
+        name_table_str += "\n|"
+
+        for property_name in property_names:
+            name_table_str += f"{property_name}|"
+        name_table_str += "\n|"
+
+        for property_name in property_names:
+            name_table_str += f"{'-' * 10}|"
+        name_table_str += "\n|"
+
+        for property_name in property_names:
+            name_table_str += f"{property_value_dict[property_name]}|"
+        name_table_str += "\n"
+    else:
+        for property_name in property_names:
+            name_table_str += f"{property_name}\t"
+        name_table_str += "\n"
+
+        for property_name in property_names:
+            name_table_str += f"{property_value_dict[property_name]}\t"
+        name_table_str += "\n"
+
+    bot = bot_tpl.render(name_table_str=name_table_str)
 
     return human, bot
 
@@ -245,6 +319,50 @@ def gen(config):
                         JSON2JSON_REDUCE_BY_JSON_LIMIT,
                         True,
                         False,
+                    )
+                case function_names.text2table_equal:
+                    result = qa_generator(
+                        gen_text2table,
+                        sentences,
+                        generated_property_values,
+                        human_template,
+                        bot_template,
+                        TEXT2TABLE_EQUAL_LIMIT,
+                        False,
+                        False,
+                    )
+                case function_names.text2table_equal_markdown:
+                    result = qa_generator(
+                        gen_text2table,
+                        sentences,
+                        generated_property_values,
+                        human_template,
+                        bot_template,
+                        TEXT2TABLE_EQUAL_LIMIT,
+                        False,
+                        True,
+                    )
+                case function_names.text2table_reduce:
+                    result = qa_generator(
+                        gen_text2table,
+                        sentences,
+                        generated_property_values,
+                        human_template,
+                        bot_template,
+                        TEXT2TABLE_REDUCE_LIMIT,
+                        True,
+                        False,
+                    )
+                case function_names.text2table_reduce_markdown:
+                    result = qa_generator(
+                        gen_text2table,
+                        sentences,
+                        generated_property_values,
+                        human_template,
+                        bot_template,
+                        TEXT2TABLE_REDUCE_LIMIT,
+                        True,
+                        True,
                     )
 
             if (

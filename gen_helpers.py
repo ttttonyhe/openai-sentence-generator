@@ -3,7 +3,7 @@ import random
 import pandas as pd
 
 from constants import *
-from generate_helpers import print_info
+from generate_helpers import print_info, strip_whitespaces
 
 # Business logic ------------------------------------------
 
@@ -40,6 +40,19 @@ def sample_sentences(sentences, sample_size):
     return candidate_sentences
 
 
+def replace_properties_with_aliases(property_value_dict):
+    property_aliases = read_property_aliases_workbook()
+
+    for property_name in list(property_value_dict):
+        if property_name in property_aliases:
+            property_value_dict[property_aliases[property_name]] = property_value_dict[
+                property_name
+            ]
+            del property_value_dict[property_name]
+
+    return property_value_dict
+
+
 # Patches ----------------------------------------
 
 
@@ -48,6 +61,23 @@ def random_sample_ordered(source_list, sample_size):
         source_list[i]
         for i in sorted(random.sample(range(len(source_list)), sample_size))
     ]
+
+
+# String manipulation -----------------------------
+
+
+def display_char_count(string):
+    total = 0
+
+    for s in strip_whitespaces(string):
+        if "\u4e00" <= s <= "\u9fef":
+            total += 3
+        elif s.isupper():
+            total += 2
+        else:
+            total += 1
+
+    return total
 
 
 # I/O --------------------------------------------
@@ -72,7 +102,7 @@ def read_templates_workbook(task_config):
         ):
             raise ValueError(f"Bot template string is missing from row {idx}")
 
-        functions = row["function"].split(",")
+        functions = strip_whitespaces(row["function"]).split(",")
         if len(functions) == 0:
             raise ValueError(f"Function is missing from row {idx}")
 
@@ -83,6 +113,19 @@ def read_templates_workbook(task_config):
         print_info(" => Templates: ", templates)
 
     return templates
+
+
+def read_property_aliases_workbook():
+    property_aliases = {}
+    pa_df = pd.read_excel(PROPERTY_ALIASES_WORKBOOK_FILE)
+
+    for idx, row in pa_df.iterrows():
+        property_aliases[row["name"]] = row["alias"]
+
+    if DEBUGGING:
+        print_info(" => Property aliases: ", property_aliases)
+
+    return property_aliases
 
 
 def save_gen_result_to_workbook(result, filename):

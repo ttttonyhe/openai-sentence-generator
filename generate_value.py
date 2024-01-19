@@ -214,7 +214,7 @@ def random_value(prop, generated_property_values, offline=False, ignore_units=Fa
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["company"]):
         random_value = fake.company()
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["percent"]):
-        random_value = f"{random_float}%"
+        random_value = random_float if ignore_units else f"{random_float}%"
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["color"]):
         random_value = fake.color_name()
     elif any(keyword in prop for keyword in PROPERTY_CLASS_KEYWORDS["ip"]):
