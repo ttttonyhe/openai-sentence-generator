@@ -15,10 +15,10 @@ from gen_helpers import (
     task_config,
     sample_sentences,
     display_char_count,
-    random_sample_ordered,
     read_templates_workbook,
     save_gen_result_to_workbook,
     replace_properties_with_aliases,
+    replace_properties_with_aliases_in_list,
 )
 from gen_text_tpl import property_list_tpl, PROPERTY_LIST_STYLE_COUNT
 
@@ -119,12 +119,20 @@ def gen_text2json(
         if len(property_names) == 1:
             return None, None
 
-        property_names = random_sample_ordered(
+        property_names = random.sample(
             property_names, random.randint(1, len(property_names) - 1)
         )
 
+    # If required, apply property name aliases
+    final_property_names = property_names.copy()
+
+    if USE_PROPERTY_ALIASES:
+        final_property_names = replace_properties_with_aliases_in_list(
+            final_property_names
+        )
+
     property_list_str = property_list_tpl(
-        property_names, random.randint(1, PROPERTY_LIST_STYLE_COUNT)
+        final_property_names, random.randint(1, PROPERTY_LIST_STYLE_COUNT)
     )
 
     human = human_tpl.render(sentence_str=sentence, name_list_str=property_list_str)
@@ -134,6 +142,7 @@ def gen_text2json(
     for property_name in property_names:
         property_value_dict[property_name] = property_values[property_name]
 
+    # If required, apply property name aliases
     if USE_PROPERTY_ALIASES:
         property_value_dict = replace_properties_with_aliases(property_value_dict)
 
@@ -165,20 +174,27 @@ def gen_json2json(
         if len(property_names) == 1:
             return None, None
 
-        property_names = random_sample_ordered(
+        property_names = random.sample(
             property_names, random.randint(1, len(property_names) - 1)
         )
 
-    # Generate target_name_str value
+    # If required, apply property name aliases
+    final_property_names = property_names.copy()
+
+    if USE_PROPERTY_ALIASES:
+        final_property_names = replace_properties_with_aliases_in_list(
+            final_property_names
+        )
+
     # By JSON
     target_name_str = json.dumps(
-        {key: "" for key in property_names}, indent=4, ensure_ascii=False
+        {key: "" for key in final_property_names}, indent=4, ensure_ascii=False
     )
 
     # By Name
     if by_name:
         target_name_str = property_list_tpl(
-            property_names, random.randint(1, PROPERTY_LIST_STYLE_COUNT)
+            final_property_names, random.randint(1, PROPERTY_LIST_STYLE_COUNT)
         )
 
     human = human_tpl.render(
@@ -188,6 +204,7 @@ def gen_json2json(
     # Generate name_json_str value
     property_value_dict = {key: property_value_dict[key] for key in property_names}
 
+    # If required, apply property name aliases
     if USE_PROPERTY_ALIASES:
         property_value_dict = replace_properties_with_aliases(property_value_dict)
 
@@ -213,12 +230,20 @@ def gen_text2table(
         if len(property_names) == 1:
             return None, None
 
-        property_names = random_sample_ordered(
+        property_names = random.sample(
             property_names, random.randint(1, len(property_names) - 1)
         )
 
+    # If required, apply property name aliases
+    final_property_names = property_names.copy()
+
+    if USE_PROPERTY_ALIASES:
+        final_property_names = replace_properties_with_aliases_in_list(
+            final_property_names
+        )
+
     property_list_str = property_list_tpl(
-        property_names, random.randint(1, PROPERTY_LIST_STYLE_COUNT)
+        final_property_names, random.randint(1, PROPERTY_LIST_STYLE_COUNT)
     )
 
     human = human_tpl.render(sentence_str=sentence, name_list_str=property_list_str)
@@ -228,6 +253,7 @@ def gen_text2table(
     for property_name in property_names:
         property_value_dict[property_name] = property_values[property_name]
 
+    # If required, apply property name aliases
     if USE_PROPERTY_ALIASES:
         property_value_dict = replace_properties_with_aliases(property_value_dict)
         property_names = list(property_value_dict.keys())
@@ -250,10 +276,12 @@ def gen_text2table(
     else:
         for property_name in property_names:
             name_table_str += f"{property_name}\t"
+        name_table_str = name_table_str.strip()
         name_table_str += "\n"
 
         for property_name in property_names:
             name_table_str += f"{property_value_dict[property_name]}\t"
+        name_table_str = name_table_str.strip()
         name_table_str += "\n"
 
     bot = bot_tpl.render(name_table_str=name_table_str)
@@ -389,10 +417,21 @@ if task_type not in task_types:
 config = task_config(task_type)
 templates_workbook_path = config["templates_workbook_path"]
 confirmation = input(
-    f"=> Have you placed a templates workbook at {templates_workbook_path}? [y/n]\n"
+    f"=> Have you placed a workbook of templates at {templates_workbook_path}? [y/n]\n"
 )
 
 if confirmation != "y":
     raise ValueError("Please place a templates workbook in the correct location")
+
+# If necessary, ask to confirm placement of property aliases workbook
+if USE_PROPERTY_ALIASES:
+    confirmation = input(
+        f"=> Have you placed a workbook of property aliases at {PROPERTY_ALIASES_WORKBOOK_FILE}? [y/n]\n"
+    )
+
+    if confirmation != "y":
+        raise ValueError(
+            "Please place a property aliases workbook in the correct location, or set USE_PROPERTY_ALIASES to False"
+        )
 
 gen(config)

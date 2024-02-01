@@ -40,23 +40,40 @@ def sample_sentences(sentences, sample_size):
     return candidate_sentences
 
 
+def replace_properties_with_aliases_in_list(property_name_list):
+    property_aliases = read_property_aliases_workbook()
+
+    for idx, property_name in enumerate(property_name_list):
+        if property_name in property_aliases:
+            property_name_list[idx] = property_aliases[property_name]
+
+    return property_name_list
+
+
 def replace_properties_with_aliases(property_value_dict):
     property_aliases = read_property_aliases_workbook()
 
-    for property_name in list(property_value_dict):
-        if property_name in property_aliases:
-            property_value_dict[property_aliases[property_name]] = property_value_dict[
-                property_name
-            ]
-            del property_value_dict[property_name]
+    # NOTE: this is necessary bc we want to keep the original key order
+    result_dict = {}
 
-    return property_value_dict
+    for property_name in list(property_value_dict.keys()):
+        result_property_name = property_name
+
+        if property_name in property_aliases:
+            result_property_name = property_aliases[property_name]
+
+        result_dict[result_property_name] = property_value_dict[property_name]
+
+    return result_dict
 
 
 # Patches ----------------------------------------
 
 
 def random_sample_ordered(source_list, sample_size):
+    """
+    @deprecated
+    """
     return [
         source_list[i]
         for i in sorted(random.sample(range(len(source_list)), sample_size))
