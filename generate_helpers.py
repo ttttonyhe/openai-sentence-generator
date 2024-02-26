@@ -128,8 +128,7 @@ def read_used_properties():
 
 def read_sentences_textfile():
     with open(SENTENCES_DATA_TEXT_FILE, "r", encoding="utf-8") as f:
-        sentences = [line.strip() for line in f.readlines()]
-
+        sentences = [line.strip().replace("\\t", "\t").replace("\\n", "\n") for line in f.readlines()]
     if DEBUGGING:
         print_info(" => Sentences: ", sentences)
 

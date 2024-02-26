@@ -48,7 +48,13 @@ PROPERTY_GROUP_LENGTH_UPPER_BOUND = 10
 
 load_dotenv()
 rate_limiter = ChatRateLimiter(request_limit=GPT_RPM, token_limit=GPT_TPM)
-openai_client = OpenAI()
+# dlj
+api_key = "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"
+
+openai_client = OpenAI(
+    # This is the default and can be omitted
+    api_key=api_key,
+)
 
 
 # Data --------------------------------------------

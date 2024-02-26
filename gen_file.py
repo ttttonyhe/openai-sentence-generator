@@ -57,15 +57,17 @@ def qa_generator(
             if "{{" not in sentence or "}}" not in sentence:
                 continue
 
-            property_names = []
+            property_names = set()
             property_values = {}
 
             # Extract property names from sentence
             for match in re.finditer(r"{{(.*?)}}", sentence):
-                property_names.append(match.group(1))
+                property_names.add(match.group(1))
 
             if len(property_names) == 0:
                 continue
+            
+            property_names = list(property_names)
 
             # Shuffle property names
             random.shuffle(property_names)
